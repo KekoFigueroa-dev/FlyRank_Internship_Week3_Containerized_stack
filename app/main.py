@@ -1,8 +1,6 @@
 from fastapi import FastAPI
 
+from app.routers import meta
+
 app = FastAPI()
-
-
-@app.get("/")
-def hello():
-    return {"message": "Hello, server"}
+app.include_router(meta.router)
