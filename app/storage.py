@@ -16,3 +16,10 @@ def get_task(task_id: int) -> Task | None:
         if task.id == task_id:
             return task
     return None
+
+
+def create_task(title: str) -> Task:
+    next_id = max((task.id for task in tasks), default=0) + 1
+    task = Task(id=next_id, title=title, done=False)
+    tasks.append(task)
+    return task
