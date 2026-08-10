@@ -1,0 +1,6 @@
+# SQLite database file — generated at runtime, not source
+tasks.db
+
+# Python bytecode cache — generated artifacts, not source
+__pycache__/
+*.pyc
