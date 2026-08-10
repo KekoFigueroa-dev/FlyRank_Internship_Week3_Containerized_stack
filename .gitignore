@@ -4,3 +4,6 @@ tasks.db
 # Python bytecode cache — generated artifacts, not source
 __pycache__/
 *.pyc
+
+# Virtual environment — local, machine-specific, rebuildable from requirements.txt
+.venv/
