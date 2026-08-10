@@ -10,7 +10,7 @@ router = APIRouter()
 @router.get(
     "/tasks",
     summary="List all tasks",
-    description="Return every task currently stored in memory.",
+    description="Return every task currently stored in the database.",
 )
 def get_tasks():
     return storage.list_tasks()

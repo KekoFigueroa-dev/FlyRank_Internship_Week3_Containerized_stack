@@ -1,6 +1,6 @@
 # Task API
 
-A small FastAPI CRUD API for managing an in-memory to-do list. No database or files — tasks live in memory for the lifetime of the server process. Built for FlyRank Week 2 BE-01.
+A small FastAPI CRUD API for managing a to-do list, backed by a SQLite database (`tasks.db`). Data persists across server restarts. Built for FlyRank Week 2 BE-01, migrated to SQLite for Week 3.
 
 ## Install & run
 
@@ -12,6 +12,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
+
+On startup, the app creates `tasks.db` in the project root (if it doesn't exist yet) and seeds it with 3 tasks. See [`decisions.md`](decisions.md) for schema and migration notes.
 
 The server starts at [http://localhost:8000](http://localhost:8000).  
 Interactive docs (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)
