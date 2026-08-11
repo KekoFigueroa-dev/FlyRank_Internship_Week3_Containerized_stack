@@ -13,23 +13,24 @@ Data now lives in a named Docker volume (`taskdata`), so it survives `docker com
 Requires Docker and Docker Compose (`docker compose version`).
 
 ```bash
-cp .env.example .env   # not strictly required for compose (it injects DATABASE_URL
-                        # directly), but this is how a non-containerized run would get it
-docker compose up
+cp .env.example .env
+docker compose up --build
 ```
 
-That builds the API image, starts Postgres with a named volume, waits for Postgres to report healthy (`pg_isready`), then starts the API. On first boot the app creates the `tasks` table and seeds 3 tasks — seeding is skipped on every later boot once the table has rows.
+`.env` is required — `compose.yaml` loads it via `env_file` for the `api` service, so `docker compose up` will fail to connect to the database without it. That builds the API image, starts Postgres with a named volume, waits for Postgres to report healthy (`pg_isready`), then starts the API. On first boot the app creates the `tasks` table and seeds 3 tasks — seeding is skipped on every later boot once the table has rows.
 
 The server is at [http://localhost:8000](http://localhost:8000).
 Interactive docs (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ## Environment
 
-| Variable | Where it's set | Example |
+| Variable | Where it's set | Value |
 |---|---|---|
-| `DATABASE_URL` | `.env` (local/non-compose runs) or `compose.yaml` `environment:` (compose runs) | `postgres://postgres:dev@localhost:5432/tasks` (local) / `postgres://postgres:dev@db:5432/tasks` (compose — host is the service name `db`, not `localhost`) |
+| `DATABASE_URL` | `.env`, loaded into the `api` container via `env_file` in `compose.yaml` | `postgres://postgres:dev@db:5432/tasks` — host is the compose service name `db`, not `localhost`; compose is the only supported way to run this app |
 
-`.env` is gitignored; `.env.example` is the committed template. Never commit real secrets.
+`.env` is gitignored and required to run the stack; `.env.example` is the committed template — copy it to `.env` before running. Never commit real secrets.
+
+The `db` service no longer publishes port 5432 to the host, so Postgres is reachable only from inside the compose network (i.e. by the `api` container) — not from `localhost` on your machine. Use `docker compose exec db psql ...` (see below) to inspect the database directly.
 
 ## Endpoints
 
