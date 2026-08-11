@@ -2,6 +2,8 @@
 
 A small FastAPI CRUD API for managing a to-do list, backed by a SQLite database (`tasks.db`). Data persists across server restarts. Built for FlyRank Week 2 BE-01, migrated to SQLite for Week 3.
 
+> **A3 in progress:** this repo is being migrated from SQLite to a containerized Postgres + FastAPI stack (`docker compose up`) for Week 3 BE-04. The sections below still describe the SQLite version; they'll be replaced once the migration is complete.
+
 ## Objective
 
 Week 2 built this CRUD API with an in-memory Python list as storage — data was lost every time the server restarted. Week 3's assignment is to swap that in-memory list for a real, file-backed SQLite database, **without changing any observable API behavior**: the same 5 endpoints, the same status codes (200/201/204/400/404), and the same error JSON shape/wording as Week 2. The only user-visible difference should be that data now survives a restart.
