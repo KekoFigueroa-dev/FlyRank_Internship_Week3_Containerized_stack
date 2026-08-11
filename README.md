@@ -60,9 +60,31 @@ content-type: application/json
 
 ![Swagger UI for Task API](docs/docs-swagger.png)
 
+## SQLite Exploration (DB Browser)
+
+Screenshots below were taken with [DB Browser for SQLite](https://sqlitebrowser.org/) opened directly against `tasks.db`, confirming the schema and data match what `app/db.py` creates.
+
+**Browse Data — `tasks` table**, showing the `id`, `title`, `done` columns and the 3 seeded rows:
+
+![tasks table in DB Browser](docs/screenshots/sqlite-browser-tasks-table.png)
+
+**Execute SQL** — ran the same query the app itself uses for `GET /tasks`:
+
+```sql
+SELECT * FROM tasks;
+```
+
+![SELECT * FROM tasks query and results](docs/screenshots/sqlite-query-select-all.png)
+
+This returned the 3 seed rows (`Learn FastAPI`, `Build CRUD API`, `Commit Stage 2`) in `id` order, confirming the on-disk data matches exactly what the API reports through `GET /tasks`.
+
 ## Verify persistence
 
 This is the main behavior change from Week 2 — data now survives a restart instead of resetting.
+
+**API parity proof**: the endpoints, request/response shapes, status codes, and error messages are all unchanged from Week 2.
+- The `curl` example above (`POST /tasks` → `201` with `{"id":4,"title":"Buy milk","done":false}`) is copied verbatim from the Week 2 README and still produces that exact response.
+- Every status code Week 2 defined (`200`/`201`/`204`/`400`/`404`) and every error body (e.g. `{"error":"Task 999 not found"}`) still behave identically — see `decisions.md` for the full before/after comparison.
 
 ```bash
 # 1. Create a task and note its id
