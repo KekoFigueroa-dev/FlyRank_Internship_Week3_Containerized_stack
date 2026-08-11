@@ -1,56 +1,67 @@
-import sqlite3
+import os
 from pathlib import Path
 
-# Anchor the DB file to the project root (parent of app/), not the process's
-# current working directory, so it lands in the same place no matter where
-# `uvicorn` is launched from.
-DB_PATH = Path(__file__).resolve().parent.parent / "tasks.db"
+import psycopg
+from dotenv import load_dotenv
+from psycopg.rows import dict_row
 
-# Schema: plain `INTEGER PRIMARY KEY` (rowid alias), deliberately WITHOUT
-# AUTOINCREMENT. Plain rowids get reassigned as max(existing id) + 1 and can
-# be reused after the highest-id row is deleted — this matches Week 2's
-# in-memory `max(id) + 1` logic exactly, including id reuse. AUTOINCREMENT
-# would block reuse and silently change behavior.
+# Loads .env for local (non-Docker) runs. In Docker Compose, DATABASE_URL is
+# injected directly as a container environment variable, so this is a no-op
+# there (load_dotenv doesn't override already-set env vars, and silently
+# does nothing if .env doesn't exist).
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+# Schema: SERIAL PRIMARY KEY (sequence-backed autoincrement). Unlike SQLite's
+# plain rowid, a Postgres sequence never reassigns or reuses ids after a
+# delete — that's a Postgres-idiomatic tradeoff we accept; the API contract
+# (status codes, error bodies, response shapes) doesn't depend on exact ids.
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS tasks (
-    id    INTEGER PRIMARY KEY,
+    id    SERIAL PRIMARY KEY,
     title TEXT    NOT NULL,
-    done  BOOLEAN NOT NULL DEFAULT 0
+    done  BOOLEAN NOT NULL DEFAULT FALSE
 );
 """
 
 # Seed rows, inserted only when the table is empty (see init_db). Mirrors
-# the 3 hardcoded Week 2 in-memory tasks so first-run behavior is identical.
+# the 3 hardcoded seed tasks from the SQLite version so first-run behavior
+# is identical.
 _SEED_ROWS = [
-    (1, "Learn FastAPI", 0),
-    (2, "Build CRUD API", 0),
-    (3, "Commit Stage 2", 1),
+    (1, "Learn FastAPI", False),
+    (2, "Build CRUD API", False),
+    (3, "Commit Stage 2", True),
 ]
 
 
-def get_connection() -> sqlite3.Connection:
+def get_connection() -> psycopg.Connection:
     # Opens a short-lived connection per call rather than sharing one
-    # global connection: FastAPI runs sync endpoints in a threadpool, and
-    # sqlite3 connections aren't safe to share across threads.
-    connection = sqlite3.connect(DB_PATH)
-    # Row factory lets callers access columns by name (row["title"]) instead
-    # of positional index, so storage.py stays readable.
-    connection.row_factory = sqlite3.Row
-    return connection
+    # global connection/pool, mirroring the SQLite version's connection
+    # lifecycle for a minimal-diff swap.
+    return psycopg.connect(DATABASE_URL, row_factory=dict_row)
 
 
 def init_db() -> None:
-    # Called on app startup (Stage 2) and directly in tests here in Stage 1.
-    # Safe to call repeatedly: CREATE TABLE IF NOT EXISTS is a no-op after
-    # the first run, and the seed insert only fires when the table is empty.
+    # Called on app startup. Safe to call repeatedly: CREATE TABLE IF NOT
+    # EXISTS is a no-op after the first run, and the seed insert only fires
+    # when the table is empty.
     with get_connection() as connection:
         connection.execute(_CREATE_TABLE_SQL)
 
-        # Only seed on a truly empty table, so re-running init_db() (e.g. on
-        # every app restart) never re-inserts or duplicates the seed rows.
-        row_count = connection.execute("SELECT COUNT(*) FROM tasks;").fetchone()[0]
+        row_count = connection.execute(
+            "SELECT COUNT(*) AS count FROM tasks;"
+        ).fetchone()["count"]
         if row_count == 0:
-            connection.executemany(
-                "INSERT INTO tasks (id, title, done) VALUES (?, ?, ?);",
-                _SEED_ROWS,
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    "INSERT INTO tasks (id, title, done) VALUES (%s, %s, %s);",
+                    _SEED_ROWS,
+                )
+            # Explicit ids were inserted above, so advance the SERIAL
+            # sequence past them; otherwise the next INSERT without an
+            # explicit id would collide with seed id 3.
+            connection.execute(
+                "SELECT setval(pg_get_serial_sequence('tasks', 'id'), "
+                "(SELECT MAX(id) FROM tasks));"
             )
