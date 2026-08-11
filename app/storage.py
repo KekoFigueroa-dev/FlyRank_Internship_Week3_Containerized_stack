@@ -3,8 +3,6 @@ from app.schemas import Task, TaskUpdate
 
 
 def _row_to_task(row) -> Task:
-    # SQLite has no native boolean type; `done` is stored as 0/1, so cast
-    # explicitly back to bool here. Keeps that detail invisible to callers.
     return Task(id=row["id"], title=row["title"], done=bool(row["done"]))
 
 
@@ -19,7 +17,7 @@ def list_tasks() -> list[Task]:
 def get_task(task_id: int) -> Task | None:
     with db.get_connection() as connection:
         row = connection.execute(
-            "SELECT id, title, done FROM tasks WHERE id = ?;",
+            "SELECT id, title, done FROM tasks WHERE id = %s;",
             (task_id,),
         ).fetchone()
     return _row_to_task(row) if row is not None else None
